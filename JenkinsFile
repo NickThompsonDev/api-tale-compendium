@@ -1,0 +1,152 @@
+pipeline {
+    agent any
+
+    environment {
+        // Secrets stored in Jenkins Credentials
+        DATABASE_PASSWORD = credentials('DATABASE_PASSWORD')
+        CLERK_SECRET_KEY = credentials('CLERK_SECRET_KEY')
+        STRIPE_SECRET_KEY = credentials('STRIPE_SECRET_KEY')
+        OPENAI_API_KEY = credentials('OPENAI_API_KEY')
+        NEXT_PUBLIC_API_URL = "http://minikube-ip/api"
+        MINIKUBE_IP = ""
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                script {
+                    checkout scm
+                }
+            }
+        }
+
+        stage('Static Code Analysis') {
+            steps {
+                script {
+                    echo "Running static code analysis..."
+                    // Placeholder for tools like ESLint, SonarQube, or any linters
+                    // Example for ESLint:
+                    sh 'npx eslint .'
+                }
+            }
+        }
+
+        stage('Build Docker Image for API') {
+            steps {
+                script {
+                    MINIKUBE_IP = sh(script: 'minikube ip', returnStdout: true).trim()
+
+                    // Build the API Docker image
+                    sh """
+                    docker build \
+                        --build-arg DATABASE_PASSWORD=${DATABASE_PASSWORD} \
+                        --build-arg CLERK_SECRET_KEY=${CLERK_SECRET_KEY} \
+                        --build-arg STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY} \
+                        --build-arg OPENAI_API_KEY=${OPENAI_API_KEY} \
+                        --build-arg NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} \
+                        -t api-tale-compendium:${env.BUILD_NUMBER} \
+                        -f Dockerfile .
+                    """
+                }
+            }
+        }
+
+        stage('Unit Tests') {
+            steps {
+                script {
+                    echo "Running unit tests..."
+                    // Placeholder for unit tests (e.g., using Jest or Mocha)
+                    // Example:
+                    sh 'npm run test'
+                }
+            }
+        }
+
+        stage('Load Docker Image into Minikube') {
+            steps {
+                script {
+                    // Load Docker image into Minikube
+                    sh "minikube image load api-tale-compendium:${env.BUILD_NUMBER}"
+                }
+            }
+        }
+
+        stage('Terraform Init') {
+            steps {
+                script {
+                    // Initialize Terraform
+                    dir('terraform') {
+                        sh 'terraform init'
+                    }
+                }
+            }
+        }
+
+        stage('Integration Tests') {
+            steps {
+                script {
+                    echo "Running integration tests..."
+                    // Placeholder for integration tests (e.g., Postman collections or API tests)
+                    // Example using Newman (Postman CLI):
+                    // sh 'newman run my-collection.postman_collection.json'
+                }
+            }
+        }
+
+        stage('Terraform Apply (Blue-Green Deployment)') {
+            steps {
+                script {
+                    // Apply the Terraform configuration to deploy the API to Kubernetes (Minikube) with Blue-Green strategy
+                    dir('terraform') {
+                        sh """
+                        terraform apply -auto-approve \
+                        -var="image_tag=api-tale-compendium:${env.BUILD_NUMBER}" \
+                        -var="minikube_ip=${MINIKUBE_IP}"
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Security Scans') {
+            steps {
+                script {
+                    echo "Running security scans..."
+                    // Placeholder for security scanning tools like Snyk or Trivy
+                    // Example using Trivy for image scanning:
+                    // sh "trivy image api-tale-compendium:${env.BUILD_NUMBER}"
+                }
+            }
+        }
+
+        stage('E2E Tests') {
+            steps {
+                script {
+                    echo "Running end-to-end (E2E) tests..."
+                    // Placeholder for E2E testing (e.g., Cypress or Selenium)
+                    // Example with Cypress:
+                    // sh 'npx cypress run'
+                }
+            }
+        }
+
+        stage('Cleanup') {
+            steps {
+                script {
+                    sh 'docker image prune -f'
+                }
+            }
+        }
+
+        stage('Notify') {
+            steps {
+                script {
+                    echo "Sending notification..."
+                    // Placeholder for notification (Slack, email, etc.)
+                    // Example for Slack notification:
+                    // slackSend (channel: '#deployments', message: "API deployed successfully!")
+                }
+            }
+        }
+    }
+}
