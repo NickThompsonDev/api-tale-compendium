@@ -53,9 +53,9 @@ pipeline {
         stage('Load Docker Image into Minikube') {
             steps {
                 script {
-                    // Load the Docker image into Minikube
+                    // Use docker save and docker load commands to load the image into Minikube's Docker environment
                     sh """
-                    docker exec minikube minikube image load api-tale-compendium:latest
+                    docker save api-tale-compendium:latest | docker exec -i minikube docker load
                     """
                 }
             }
