@@ -15,20 +15,7 @@ pipeline {
         CLERK_WEBHOOK_SECRET = credentials('CLERK_WEBHOOK_SECRET')
     }
     stages {
-        stage('Ensure Minikube is Running') {
-            steps {
-                script {
-                    def minikubeStatus = sh(script: 'minikube status --format="{{.Host}}"', returnStdout: true).trim()
-                    if (minikubeStatus != 'Running') {
-                        echo 'Minikube is not running. Starting Minikube...'
-                        sh 'minikube start --driver=docker'
-                    } else {
-                        echo 'Minikube is already running.'
-                    }
-                }
-            }
-        }
-        stage('Checkout Code') {
+        stage('Checkout API Code') {
             steps {
                 git url: 'https://github.com/NickThompsonDev/api-tale-compendium.git', branch: 'master'
             }
@@ -46,6 +33,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
+                    // Build and tag the Docker image for the API
                     sh """
                     docker build --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY} \
                                  --build-arg STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY} \
@@ -65,42 +53,23 @@ pipeline {
         stage('Load Docker Image into Minikube') {
             steps {
                 script {
+                    // Load the Docker image into Minikube
                     sh 'minikube image load api-tale-compendium:latest'
                 }
             }
         }
-        stage('Smoke Tests') {
-            steps {
-                echo 'Running smoke tests...'
-            }
-        }
-        stage('Deploy to Minikube') {
+        stage('Deploy API to Minikube with Terraform') {
             steps {
                 script {
-                    build job: 'Terraform-Deploy-Pipeline', parameters: [string(name: 'SERVICE', value: 'api')]
+                    // Trigger the Terraform pipeline to apply API-related changes
+                    build job: 'Terraform-Pipeline', parameters: [string(name: 'SERVICE', value: 'api')]
                 }
-            }
-        }
-        stage('Security Tests') {
-            steps {
-                echo 'Running security tests...'
-            }
-        }
-        stage('End-to-End Tests') {
-            steps {
-                echo 'Running end-to-end tests...'
             }
         }
     }
     post {
         always {
-            echo 'Post-build actions...'
-        }
-        success {
-            echo 'Deployment succeeded!'
-        }
-        failure {
-            echo 'Deployment failed.'
+            echo 'API build and deployment finished.'
         }
     }
 }
