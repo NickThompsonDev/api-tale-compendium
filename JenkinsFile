@@ -62,7 +62,7 @@ pipeline {
             steps {
                 script {
                     // Trigger the Terraform pipeline to apply API-related changes
-                    build job: 'Terraform-Pipeline', parameters: [string(name: 'SERVICE', value: 'api')]
+                    build job: 'Terraform-Deploy-Pipeline', parameters: [string(name: 'SERVICE', value: 'api')]
                 }
             }
         }
