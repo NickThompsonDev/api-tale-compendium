@@ -55,7 +55,7 @@ pipeline {
                 script {
                     // Load the Docker image into Minikube
                     sh """
-                    docker exec minikube minikube image load  api-tale-compendium:latest'
+                    docker exec minikube minikube image load api-tale-compendium:latest
                     """
                 }
             }
